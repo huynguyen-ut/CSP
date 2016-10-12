@@ -1,13 +1,10 @@
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 import gurobi.GRB;
 import gurobi.GRBEnv;
-import gurobi.GRBException;
 import gurobi.GRBLinExpr;
 import gurobi.GRBModel;
 import gurobi.GRBVar;
@@ -22,14 +19,16 @@ public class Model2 {
 	private int h; // so dong (chieu cao) bai chinh
 	private int J; // so cot (chieu dai) bai chinh + 1 bai tam (index=0)
 	private int T; // thoi diem Container duoc boc ra khoi tau, T = nC
+
+	/* GUROBI */
 	private double objVal, runtime, lowerBound;
-	GRBVar x[][][];
-	GRBVar y[][][];
-	GRBVar z[][][];
-	public Model2(String ifileName, String ofileName) throws Exception {
+	private GRBVar[][][] x, y, z;
+
+	public Model2(String ifileName, String ofileName, String vfileName) throws Exception {
 		readData(ifileName);
 		printData();
 		solve();
+		printVariables(vfileName);
 		saveData(ofileName);
 	}
 
@@ -85,9 +84,9 @@ public class Model2 {
 		GRBModel model = new GRBModel(env);
 
 		// decision variables
-		 x = new GRBVar[this.nC + 1][J][T];
-		 y = new GRBVar[this.nC + 1][this.nC + 1][T];
-		 z = new GRBVar[this.nC + 1][J][T];
+		x = new GRBVar[this.nC + 1][J][T];
+		y = new GRBVar[this.nC + 1][this.nC + 1][T];
+		z = new GRBVar[this.nC + 1][J][T];
 		for (int i = 1; i <= this.nC; i++)
 			for (int j = 0; j < J; j++)
 				for (int t = 0; t < T; t++) {
@@ -221,25 +220,28 @@ public class Model2 {
 				model.addConstr(expr, GRB.LESS_EQUAL, 0, "contr4.12");
 			}
 
-		// objective function
-	/*	GRBLinExpr func = new GRBLinExpr();
-		for (ArrayList<Container> lst : vessel.getColumns())
-			for (Container i : lst)
-				for (int j = 1; j < J; j++)
-					for (int t = 0; t < T; t++)
-						func.addTerm(1.0, x[i.getIndex()][j][t]);
-		for (ArrayList<Container> lst : vessel.getColumns())
-			for (Container i : lst)
-				for (int t = 0; t < T; t++)
-					func.addTerm(2.0, x[i.getIndex()][0][t]);*/
+		// objective function 1
+//		GRBLinExpr func = new GRBLinExpr();
+//		for (ArrayList<Container> lst : vessel.getColumns())
+//			for (Container i : lst)
+//				for (int j = 1; j < J; j++)
+//					for (int t = 0; t < T; t++)
+//						func.addTerm(1.0, x[i.getIndex()][j][t]);
+//		for (ArrayList<Container> lst : vessel.getColumns())
+//			for (Container i : lst)
+//				for (int t = 0; t < T; t++)
+//					func.addTerm(2.0, x[i.getIndex()][0][t]);
+//		model.setObjective(func, GRB.MINIMIZE);
+
+		// objective function 2
 		GRBLinExpr func = new GRBLinExpr();
 		for (ArrayList<Container> lst : vessel.getColumns())
 			for (Container i : lst)
 				for (int j = 1; j < J; j++)
-					for (int t = 0; t < T; t++){
+					for (int t = 0; t < T; t++) {
 						func.addTerm(t, x[i.getIndex()][j][t]);
 						func.addTerm(t, z[i.getIndex()][j][t]);
-						}
+					}
 		model.setObjective(func, GRB.MINIMIZE);
 
 		// write model to files
@@ -258,15 +260,7 @@ public class Model2 {
 			yard = new Yard(J);
 			for (int i = 1; i <= this.nC; i++)
 				for (int j = 0; j < J; j++)
-					for (int t = 0; t < T; t++){
-						/*if (x[i][j][t].get(GRB.DoubleAttr.X) > 0.5) {
-							for (ArrayList<Container> lst : vessel.getColumns())
-								for (Container c : lst)
-									if (c.getIndex() == i) {
-										c.setT(t);
-										yard.addContainer(c, j);
-									}
-						}*/
+					for (int t = 0; t < T; t++) {
 						if (x[i][j][t].get(GRB.DoubleAttr.X) > 0.5) {
 							for (ArrayList<Container> lst : vessel.getColumns())
 								for (Container c : lst)
@@ -274,44 +268,38 @@ public class Model2 {
 										c.setT1(t);
 										yard.addContainer(c, j);
 									}
-							
-							}
-		    if(j!=0)
-			if (z[i][j][t].get(GRB.DoubleAttr.X) > 0.5) {
-				for (ArrayList<Container> lst : vessel.getColumns())
-					for (Container c : lst)
-						if (c.getIndex() == i) {
-							c.setT2(t);
-							yard.addContainer(c, j);
+
 						}
-						}}
+						if (j != 0 && z[i][j][t].get(GRB.DoubleAttr.X) > 0.5) {
+							for (ArrayList<Container> lst : vessel.getColumns())
+								for (Container c : lst)
+									if (c.getIndex() == i) {
+										c.setT2(t);
+										yard.addContainer(c, j);
+									}
+						}
+					}
 		}
 
 	}
-	 public void prinfile(String file) throws GRBException, FileNotFoundException, UnsupportedEncodingException{
-  	   
-			PrintWriter writer = new PrintWriter(file, "UTF-8");
 
-     	for(int i=1;i<=this.nC;i++)
-     	 for(int j=0;j<J;j++)
-     		for(int t=0;t<T;t++){
-     			writer.write("x["+i+"]["+j+"]["+t+"]");
-     			writer.write(x[i][j][t].get(GRB.DoubleAttr.X)+"\n");
-     		}
-     	for(int i=1;i<this.nC;i++)
-	        	for(int k=i+1;k<this.nC+1;k++)
-	        		for(int t=0;t<T;t++){
-	        			writer.write("y["+i+"]["+k+"]["+t+"]");
-	        			writer.write(y[i][k][t].get(GRB.DoubleAttr.X)+"\n");
-	        		}
-     	for(int i=1;i<=this.nC;i++)
-        	 for(int j=0;j<J;j++)
-        		for(int t=0;t<T;t++){
-        			writer.write("z["+i+"]["+j+"]["+t+"]");
-        			writer.write(z[i][j][t].get(GRB.DoubleAttr.X)+"\n");
-        		}
-     	writer.close();
-    }
+	private void printVariables(String fileName) throws Exception {
+		PrintWriter out = new PrintWriter(fileName);
+		for (int i = 1; i <= this.nC; i++)
+			for (int j = 0; j < J; j++)
+				for (int t = 0; t < T; t++)
+					out.println("x[" + i + "][" + j + "][" + t + "] = " + x[i][j][t].get(GRB.DoubleAttr.X));
+		for (int i = 1; i < this.nC; i++)
+			for (int k = i + 1; k < this.nC + 1; k++)
+				for (int t = 0; t < T; t++)
+					out.println("y[" + i + "][" + k + "][" + t + "] = " + y[i][k][t].get(GRB.DoubleAttr.X));
+		for (int i = 1; i <= this.nC; i++)
+			for (int j = 0; j < J; j++)
+				for (int t = 0; t < T; t++)
+					out.println("z[" + i + "][" + j + "][" + t + "] = " + z[i][j][t].get(GRB.DoubleAttr.X));
+		out.close();
+	}
+
 	private void saveData(String fileName) throws Exception {
 		PrintWriter out = new PrintWriter(fileName);
 		out.println("ObjVal:" + String.format("%.2f", objVal) + " ** LowerBound:" + String.format("%.2f", lowerBound)
@@ -322,7 +310,6 @@ public class Model2 {
 			out.print("Col " + j + ": ");
 			for (int i = lst.size() - 1; i >= 0; i--) {
 				Container c = lst.get(i);
-				//out.print(c.getIndex() + " (" + (c.getT1() ) + ":" + (c.getT2() ) + ")" + "\t");
 				if (j == 0) // Container duoc boc vao bai tam
 					out.print(c.getIndex() + " (" + (c.getT1() + 1) + ")" + "\t");
 				else {

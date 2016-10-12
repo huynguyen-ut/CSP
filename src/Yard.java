@@ -3,6 +3,7 @@ import java.util.ArrayList;
 public class Yard {
 
 	private ArrayList<Container>[] columns;
+
 	public ArrayList<Container>[] getColumns() {
 		return columns;
 	}
