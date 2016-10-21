@@ -1,4 +1,4 @@
-ObjVal:17.00 ** LowerBound:17.00 ** Runtime(s):251.32
+ObjVal:17.00 ** LowerBound:17.00 ** Runtime(s):261.05
 ---------------
 Col 0: 
 Col 1: 4 (1)	2 (4)	1 (7)	

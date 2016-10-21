@@ -19,12 +19,16 @@ public class Model1 {
 	private int h; // so dong (chieu cao) bai chinh
 	private int J; // so cot (chieu dai) bai chinh + 1 bai tam (index=0)
 	private int T; // thoi diem Container duoc boc ra khoi tau, T = nC
-	private double objVal, runtime, lowerBound;
 
-	public Model1(String ifileName, String ofileName) throws Exception {
+	/* GUROBI */
+	private double objVal, runtime, lowerBound;
+	private GRBVar[][][] x, y;
+
+	public Model1(String ifileName, String ofileName, String vfileName) throws Exception {
 		readData(ifileName);
 		printData();
 		solve();
+		printVariables(vfileName);
 		saveData(ofileName);
 	}
 
@@ -80,8 +84,8 @@ public class Model1 {
 		GRBModel model = new GRBModel(env);
 
 		// decision variables
-		GRBVar x[][][] = new GRBVar[this.nC + 1][J][T];
-		GRBVar y[][][] = new GRBVar[this.nC + 1][this.nC + 1][T];
+		x = new GRBVar[this.nC + 1][J][T];
+		y = new GRBVar[this.nC + 1][this.nC + 1][T];
 		for (int i = 1; i <= this.nC; i++)
 			for (int j = 0; j < J; j++)
 				for (int t = 0; t < T; t++)
@@ -222,6 +226,19 @@ public class Model1 {
 						}
 		}
 
+	}
+
+	private void printVariables(String fileName) throws Exception {
+		PrintWriter out = new PrintWriter(fileName);
+		for (int i = 1; i <= this.nC; i++)
+			for (int j = 0; j < J; j++)
+				for (int t = 0; t < T; t++)
+					out.println("x[" + i + "][" + j + "][" + t + "] = " + x[i][j][t].get(GRB.DoubleAttr.X));
+		for (int i = 1; i < this.nC; i++)
+			for (int k = i + 1; k < this.nC + 1; k++)
+				for (int t = 0; t < T; t++)
+					out.println("y[" + i + "][" + k + "][" + t + "] = " + y[i][k][t].get(GRB.DoubleAttr.X));
+		out.close();
 	}
 
 	private void saveData(String fileName) throws Exception {
